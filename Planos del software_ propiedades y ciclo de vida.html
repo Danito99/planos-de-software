@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planos del software: propiedades y ciclo de vida</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F7FB; --dot:#CBD5E1; --surface:#FFFFFF; --surface2:#EEF3F8; --ink:#172033; --muted:#5B6478; --line:#D6DCE6;
+  --accent:#0F6E8C; --accent-ink:#FFFFFF; --ok:#1E8A55; --okbg:#E2F4EA; --bad:#C23B3B; --badbg:#FBE6E6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E141C; --dot:#243140; --surface:#16202B; --surface2:#1D2A38; --ink:#E7EEF6; --muted:#9AA8B8; --line:#2A3847;
+    --accent:#5CC8E6; --accent-ink:#0E141C; --ok:#5FD49A; --okbg:rgba(95,212,154,.13); --bad:#FF8080; --badbg:rgba(255,128,128,.13);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E141C; --dot:#243140; --surface:#16202B; --surface2:#1D2A38; --ink:#E7EEF6; --muted:#9AA8B8; --line:#2A3847;
+  --accent:#5CC8E6; --accent-ink:#0E141C; --ok:#5FD49A; --okbg:rgba(95,212,154,.13); --bad:#FF8080; --badbg:rgba(255,128,128,.13);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;color:var(--ink);font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.5;
+  background-color:var(--bg);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:22px 22px}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque','Figtree',sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,[role="button"]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:.7em 1.3em;border-radius:10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+
+/* ---------- Intro ---------- */
+.intro{max-width:1000px;margin:0 auto;padding:40px 22px 60px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:center}
+@media (max-width:820px){.intro{grid-template-columns:minmax(0,1fr)}.hero-svg{order:-1;max-width:300px;margin:0 auto}}
+.intro h1{font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;font-weight:800;letter-spacing:-.02em}
+.lead{font-size:1.12rem;color:var(--muted);margin:0 0 22px;max-width:54ch}
+.rules{margin:0 0 26px;padding-left:1.2em;max-width:58ch}
+.rules li{margin-bottom:.4em}
+.form{display:grid;gap:12px;max-width:440px}
+.form label{font-weight:700;display:grid;gap:6px}
+.form input{font:inherit;padding:.65em .8em;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.err{color:var(--bad);margin:0;min-height:1.5em}
+.hero-svg{width:100%}
+.hero-svg .orb{transform-origin:160px 160px;animation:orb 7s linear infinite}
+@keyframes orb{to{transform:rotate(360deg)}}
+
+/* ---------- HUD ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--surface);border-bottom:2px solid var(--line)}
+.bar-in{max-width:1100px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px}
+.who{flex:1;min-width:0;line-height:1.25}
+.who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{color:var(--muted);font-size:.9rem}
+.hstat{text-align:right;line-height:1.15}
+.hstat b{font-family:'Bricolage Grotesque',sans-serif;font-size:1.4rem;display:block;font-variant-numeric:tabular-nums}
+.hstat span{color:var(--muted);font-size:.8rem}
+.hstat.low b{color:var(--bad)}
+.steps{max-width:1100px;margin:0 auto;padding:0 20px 10px;display:flex;gap:4px}
+.steps span{flex:1;height:7px;border-radius:3px;background:var(--line)}
+.steps .d{background:var(--ok)} .steps .c{background:var(--accent)}
+
+.wrap{max-width:1100px;margin:0 auto;padding:22px 20px 30px}
+.phead{margin:0 0 18px;max-width:75ch}
+.phead .kick{margin:0;color:var(--accent);font-weight:700}
+.phead h2{margin:2px 0 6px;font-size:clamp(1.5rem,3.5vw,2rem);line-height:1.15;font-weight:800}
+.phead p{margin:0;color:var(--muted)}
+.case{background:var(--surface);border:2px solid var(--line);border-left:6px solid var(--accent);border-radius:12px;padding:14px 18px;margin:0 0 18px;max-width:80ch}
+.case b{font-family:'Bricolage Grotesque',sans-serif}
+.fb{border-left:4px solid;padding:10px 14px;border-radius:0 10px 10px 0;margin:0 0 18px;max-width:80ch}
+.fb.ok{border-color:var(--ok);background:var(--okbg)}
+.fb.bad{border-color:var(--bad);background:var(--badbg)}
+.fb.info{border-color:var(--accent);background:var(--surface2)}
+
+/* Tarjetas */
+.chip{display:inline-flex;align-items:center;gap:6px;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:10px;padding:.4em .75em;font-size:.95rem;line-height:1.3;max-width:100%}
+.chip:hover:not(:disabled){border-color:var(--accent)}
+.chip.sel{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent);transform:translateY(-2px)}
+.chip.lock{border-color:var(--ok);background:var(--okbg);cursor:default}
+.chip.lock::before{content:"✓";font-weight:700;color:var(--ok)}
+.chip.fix{border-color:var(--bad);border-style:dashed;background:var(--badbg);cursor:default}
+.chip.fix::before{content:"✕";font-weight:700;color:var(--bad)}
+.chip.name{font-weight:700}
+span.chip{cursor:default}
+
+.drop{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;min-height:2.6em;padding:6px;border:2px dashed var(--line);border-radius:10px;cursor:pointer;background:var(--surface2)}
+.drop:hover{border-color:var(--accent)}
+.drop .ph{color:var(--muted);font-size:.88rem;padding:.3em .3em}
+.armed .drop{border-color:var(--accent)}
+.review .drop{cursor:default;border-style:solid;background:transparent}
+
+/* Mapa de propiedades */
+.links{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
+.mind{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.55fr) minmax(0,1fr);gap:26px 70px;margin-bottom:20px}
+.mind .center{grid-column:2;grid-row:1/4;align-self:center;position:relative;z-index:1;text-align:center;background:var(--ink);color:var(--bg);border-radius:18px;padding:22px 14px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.25rem;line-height:1.15}
+.node{position:relative;z-index:1;background:var(--surface);border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.nhead{display:flex;align-items:center;gap:10px;padding:8px 10px}
+.nhead .ic{font-size:1.4rem;line-height:1}
+.nhead .drop{flex:1;background:rgba(255,255,255,.85);border-color:rgba(0,0,0,.25)}
+.nhead .drop .ph{color:#3a4252}
+.nhead .chip{color:#172033;background:#fff}
+.nhead .chip.lock{background:#E2F4EA;border-color:#1E8A55}
+.nhead .chip.fix{background:#FBE6E6;border-color:#C23B3B}
+.nhead .lbl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.1rem}
+.node p{margin:0;padding:10px 12px 12px;font-size:.95rem}
+
+/* Ciclo */
+.cyc{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto minmax(90px,auto) auto;gap:30px 64px;margin-bottom:20px}
+.cyc .center{grid-area:2/2/3/3;align-self:center;position:relative;z-index:1;text-align:center;border:2px dashed var(--line);border-radius:50%;aspect-ratio:1;max-width:190px;justify-self:center;display:grid;place-items:center;padding:14px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.1rem;line-height:1.15;color:var(--muted)}
+.cslot{position:relative;z-index:1;background:var(--surface);border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.cslot .num{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.5rem;line-height:1;min-width:1.2em}
+.cslot .body{padding:10px}
+@media (max-width:760px){
+  .links{display:none}
+  .mind{grid-template-columns:minmax(0,1fr);gap:14px}
+  .mind .center{grid-column:1;grid-row:auto}
+  .mind .node{grid-area:auto!important}
+  .cyc{grid-template-columns:minmax(0,1fr);grid-template-rows:none;gap:34px}
+  .cyc .center{display:none}
+  .cyc .cslot{grid-area:auto!important;overflow:visible}
+  .cyc .cslot::after{content:"↓";position:absolute;left:50%;bottom:-31px;transform:translateX(-50%);font-size:1.3rem;color:var(--muted)}
+  .cyc .cslot:last-of-type::after{content:"↺ vuelve a la etapa 1";font-size:.9rem;white-space:nowrap}
+}
+
+/* Bins */
+.bins{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:20px}
+.bin{background:var(--surface);border:2px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.bin .nhead{cursor:pointer}
+.review .bin .nhead{cursor:default}
+.bin .drop{flex:1;margin:10px;flex-direction:column;align-items:stretch;border-radius:10px}
+.bin .drop .chip{width:100%}
+
+/* Banco */
+.bank{position:sticky;bottom:0;z-index:5;background:var(--surface);border-top:2px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.08);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bank-in{max-width:1100px;margin:0 auto;padding:10px 20px 12px}
+.bank h3{margin:0 0 6px;font-size:1rem;display:flex;justify-content:space-between;gap:10px}
+.bank h3 span{color:var(--muted);font-family:'Figtree',sans-serif;font-weight:400;font-size:.9rem}
+.cards{display:flex;flex-wrap:wrap;gap:8px;max-height:30vh;overflow:auto;padding:4px 2px 8px}
+.cards .empty{color:var(--muted);margin:4px 0}
+.bactions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bactions p{margin:0;color:var(--muted);font-size:.9rem}
+
+.toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--bad);color:#fff;padding:12px 18px;border-radius:10px;max-width:90vw;z-index:20;font-weight:700}
+
+/* ---------- Informe ---------- */
+.res{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:26px;max-width:820px;margin:0 auto 34px}
+.card .kick{margin:0;color:var(--accent);font-weight:700}
+.card h1{margin:2px 0 0;font-size:clamp(1.7rem,4.5vw,2.4rem);line-height:1.1;font-weight:800}
+.card .grp{margin:4px 0 18px;color:var(--muted)}
+.gradebox{display:flex;align-items:center;gap:18px;margin:0 0 20px;padding:16px 20px;border-radius:14px;background:var(--surface2)}
+.grade{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(3.4rem,12vw,5rem);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.grade small{font-size:.3em;color:var(--muted);font-weight:600}
+.verdict{margin-left:auto;text-align:right;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px;margin:0 0 20px}
+@media (max-width:540px){.facts{grid-template-columns:minmax(0,1fr)}}
+.facts div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.facts dt{color:var(--muted)} .facts dd{margin:0;font-weight:700;text-align:right}
+.facts .warn dd{color:var(--bad)}
+.lv{display:grid;gap:8px;margin:0 0 20px}
+.lvrow{display:grid;grid-template-columns:minmax(0,1fr) 120px 5.5em;gap:10px;align-items:center;font-size:.95rem}
+.lm{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.lm i{display:block;height:100%;background:var(--ok)}
+.lvrow b{text-align:right}
+.shot{margin:0;padding:12px 14px;border-radius:10px;border:2px dashed var(--accent);font-weight:700}
+.sec{margin:0 0 30px}
+.sec h2{font-size:1.6rem;margin:0 0 4px;font-weight:800}
+.sec > p{margin:0 0 14px;color:var(--muted)}
+.refs{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:18px 22px 18px 40px;margin:0}
+.refs li{margin-bottom:.6em;padding-left:.2em}
+.after{max-width:820px;margin:0 auto}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+"use strict";
+
+var COL=[
+ {bg:"#E4572E",ink:"#FFFFFF"},{bg:"#F3A712",ink:"#2A1D00"},{bg:"#29A36A",ink:"#FFFFFF"},
+ {bg:"#1E91B6",ink:"#FFFFFF"},{bg:"#5A5FD8",ink:"#FFFFFF"},{bg:"#C2417F",ink:"#FFFFFF"}
+];
+
+var PROPS=[
+ {name:"Mantenibilidad",icon:"🔧",def:"Facilidad con que el software puede modificarse para corregir errores, mejorarse o adaptarse a nuevas necesidades."},
+ {name:"Confiabilidad",icon:"🛟",def:"Capacidad de funcionar sin fallas durante un tiempo y en condiciones determinadas, y de recuperarse si algo sale mal."},
+ {name:"Eficiencia",icon:"⚡",def:"Uso adecuado de los recursos (tiempo de respuesta, memoria, procesador) para cumplir sus funciones."},
+ {name:"Usabilidad",icon:"🙂",def:"Facilidad con que las personas aprenden a usarlo y logran sus objetivos de forma cómoda."},
+ {name:"Seguridad",icon:"🔒",def:"Protección de la información para que sólo las personas autorizadas puedan ver o cambiar los datos."},
+ {name:"Portabilidad",icon:"🧳",def:"Capacidad de funcionar en distintos equipos, sistemas operativos o entornos con pocos cambios."}
+];
+var DISTRACT=["Compatibilidad","Adecuación funcional","Escalabilidad"];
+
+var STAGES=[
+ {name:"Análisis de requisitos",icon:"🔍",desc:"Averiguar qué necesitan los usuarios y qué debe hacer el software; se documentan los requisitos."},
+ {name:"Diseño",icon:"📐",desc:"Planear cómo se construirá: estructura, pantallas, datos y módulos."},
+ {name:"Implementación o desarrollo",icon:"💻",desc:"Escribir el código del programa siguiendo lo que se planeó."},
+ {name:"Pruebas",icon:"🧪",desc:"Verificar que todo funcione como se pidió y encontrar errores antes de entregarlo."},
+ {name:"Implementación o entrega",icon:"🚀",desc:"Instalar y poner el software en funcionamiento para los usuarios, con capacitación si hace falta."},
+ {name:"Mantenimiento",icon:"🛠️",desc:"Corregir errores, mejorar y adaptar el software mientras las personas lo usan."}
+];
+
+var EX_STAGE=[
+ ["Entrevistan a maestros y alumnos: necesitan copiar, mover, renombrar y comprimir tareas, y recuperar archivos borrados por error.",
+  "Hacen una lista: el programa DEBE permitir buscar archivos por nombre y por extensión (.docx, .pdf, .png)."],
+ ["Dibujan el boceto de la pantalla: árbol de carpetas a la izquierda, archivos a la derecha y botones de copiar, cortar y pegar.",
+  "Deciden que la papelera será un módulo aparte que guarde los archivos eliminados durante 30 días."],
+ ["Programan la función que mueve un archivo de una carpeta a otra.",
+  "Escriben el código que comprime varios archivos en un solo .zip."],
+ ["Copian 1,000 archivos de ensayo y comparan que todos lleguen completos y sin daños.",
+  "Intentan renombrar un archivo con un nombre que ya existe para ver si el programa lo detecta."],
+ ["Instalan Carpeta Viva en las 30 computadoras del laboratorio y capacitan a los maestros.",
+  "Publican la versión 1.0 para que todos los alumnos la descarguen."],
+ ["Un alumno reporta que al renombrar tarea_español.docx aparece un error por la «ñ»; el equipo lo corrige.",
+  "Seis meses después agregan la operación «sincronizar con la nube», que pidieron los usuarios."]
+];
+var EX_PROP=[
+ ["El código está organizado por módulos: agregar la operación «comprimir» no obligó a cambiar el resto del programa.",
+  "Cada función tiene comentarios claros, así otro programador puede corregir un error en poco tiempo."],
+ ["Si se va la luz mientras mueve un archivo, el original no se pierde ni se daña.",
+  "Funciona semanas seguidas en el laboratorio sin cerrarse de forma inesperada."],
+ ["Copia un video de 2 GB en segundos sin congelar la computadora.",
+  "Encuentra un archivo entre 10,000 en menos de un segundo y usa poca memoria."],
+ ["Un alumno de primer ingreso logra copiar, pegar y renombrar sin leer ningún manual.",
+  "Se pueden arrastrar archivos con el mouse y funcionan los atajos Ctrl+C y Ctrl+V."],
+ ["Sólo el dueño de una carpeta y su maestro pueden abrir o borrar esos archivos.",
+  "Pide contraseña antes de eliminar definitivamente una carpeta compartida."],
+ ["Funciona igual en Windows, macOS y Linux.",
+  "Se instala en una computadora nueva copiando una sola carpeta, sin configurar nada más."]
+];
+
+var SRC_OK=[
+ "ISO/IEC 25010:2011. Modelo de calidad de sistemas y software. Organización Internacional de Normalización.",
+ "Sommerville, I. (2011). Ingeniería de software (9.ª ed.). Pearson Educación.",
+ "Pressman, R. S. (2010). Ingeniería del software: un enfoque práctico (7.ª ed.). McGraw-Hill.",
+ "ISO/IEC/IEEE 12207:2017. Procesos del ciclo de vida del software.",
+ "Artículo de una revista académica universitaria, con autor, fecha y referencias."
+];
+var SRC_BAD=[
+ "Video corto de redes sociales sin autor: «Aprende el ciclo de vida en 30 segundos».",
+ "Respuesta de un chatbot de IA copiada sin revisar ni saber de dónde salió.",
+ "Blog anónimo sin fecha ni referencias.",
+ "Presentación de un alumno de otro grupo encontrada en una memoria USB.",
+ "Foro de preguntas donde cualquiera responde sin identificarse."
+];
+var REFS=[
+ "International Organization for Standardization. (2011). <i>ISO/IEC 25010:2011. Systems and software engineering: Systems and software Quality Requirements and Evaluation (SQuaRE). System and software quality models</i>. ISO.",
+ "International Organization for Standardization. (2017). <i>ISO/IEC/IEEE 12207:2017. Systems and software engineering: Software life cycle processes</i>. ISO.",
+ "Pressman, R. S. (2010). <i>Ingeniería del software: un enfoque práctico</i> (7.ª ed.). McGraw-Hill.",
+ "Sommerville, I. (2011). <i>Ingeniería de software</i> (9.ª ed.). Pearson Educación."
+];
+
+var PART_META=[
+ {kick:"Esquema 1",title:"Propiedades del software",instr:"Toca un nombre del banco y luego el recuadro con su definición. Ojo: sobran dos nombres.",limit:300,layout:"mind",cap:1},
+ {kick:"Esquema 2",title:"El ciclo de vida, en orden",instr:"Coloca las seis etapas en orden, de la 1 a la 6. Las flechas muestran cómo avanza el ciclo y cómo vuelve a empezar.",limit:240,layout:"cycle",cap:1},
+ {kick:"Esquema 2",title:"El propósito de cada etapa",instr:"Ahora que tienes el ciclo, coloca en cada etapa la descripción de su propósito.",limit:300,layout:"cycledesc",cap:1},
+ {kick:"Caso: operaciones con archivos",title:"¿En qué etapa ocurre?",instr:"Lee cada situación del proyecto Carpeta Viva y colócala en la etapa del ciclo de vida donde sucede.",limit:300,layout:"bins",cap:0,caseBox:true},
+ {kick:"Caso: operaciones con archivos",title:"¿Qué propiedad demuestra?",instr:"Cada situación muestra una propiedad del software. Colócala en la propiedad correcta.",limit:300,layout:"bins",cap:0,caseBox:true},
+ {kick:"Fuentes de información",title:"¿Es una fuente confiable?",instr:"Clasifica cada fuente. Sólo las confiables pueden aparecer en la lista de fuentes consultadas de un trabajo.",limit:180,layout:"bins",cap:0}
+];
+var NP=PART_META.length;
+
+/* ---------- utilidades ---------- */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function normText(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();}
+function fmtTime(ms){var s=Math.max(0,Math.ceil(ms/1000)),m=Math.floor(s/60);s%=60;return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;}
+function fmtLong(ms){var s=Math.max(0,Math.floor(ms/1000)),m=Math.floor(s/60);s%=60;return m+" min "+s+" s";}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function range(n){var r=[];for(var i=0;i<n;i++)r.push(i);return r;}
+function pick01(){return range(6).map(function(){return Math.random()<.5?0:1;});}
+
+/* ---------- plan y partes ---------- */
+function buildPlan(){
+  var p={bp:shuffle(range(6)),bp2:shuffle(range(6)),dis:shuffle([0,1,2]).slice(0,2),exS:pick01(),exP:pick01(),ok:shuffle(range(5)).slice(0,3),bad:shuffle(range(5)).slice(0,3),order:[]};
+  var parts=buildParts(p);
+  p.order=parts.map(function(P){return shuffle(P.cards.map(function(c){return c.id;}));});
+  return p;
+}
+function buildParts(p){
+  var P=[];
+  P.push({bins:PROPS.map(function(x,i){return {id:"p"+i,label:x.name,icon:x.icon,c:i,def:x.def};}),
+    cards:PROPS.map(function(x,i){return {id:"n"+i,text:x.name,ans:"p"+i,name:true};}).concat(p.dis.map(function(d,k){return {id:"d"+k,text:DISTRACT[d],ans:null,name:true};}))});
+  P.push({bins:STAGES.map(function(x,i){return {id:"o"+i,label:String(i+1),c:i};}),
+    cards:STAGES.map(function(x,i){return {id:"s"+i,text:x.name,ans:"o"+i,name:true};})});
+  P.push({bins:STAGES.map(function(x,i){return {id:"g"+i,label:x.name,icon:x.icon,c:i,num:i+1};}),
+    cards:STAGES.map(function(x,i){return {id:"e"+i,text:x.desc,ans:"g"+i};})});
+  P.push({bins:STAGES.map(function(x,i){return {id:"b"+i,label:(i+1)+". "+x.name,icon:x.icon,c:i};}),
+    cards:STAGES.map(function(x,i){return {id:"x"+i,text:EX_STAGE[i][p.exS[i]],ans:"b"+i};})});
+  P.push({bins:PROPS.map(function(x,i){return {id:"q"+i,label:x.name,icon:x.icon,c:i};}),
+    cards:PROPS.map(function(x,i){return {id:"y"+i,text:EX_PROP[i][p.exP[i]],ans:"q"+i};})});
+  P.push({bins:[{id:"ok",label:"Fuente confiable",icon:"📚",c:2},{id:"no",label:"No confiable",icon:"🚫",c:0}],
+    cards:p.ok.map(function(k,j){return {id:"fo"+j,text:SRC_OK[k],ans:"ok"};}).concat(p.bad.map(function(k,j){return {id:"fb"+j,text:SRC_BAD[k],ans:"no"};}))});
+  if(p.bp){P[0].bins=p.bp.map(function(i){return P[0].bins[i];});P[4].bins=p.bp2.map(function(i){return P[4].bins[i];});}
+  P.forEach(function(x,i){for(var k in PART_META[i]) x[k]=PART_META[i][k];});
+  return P;
+}
+var PARTS=null;
+function part(i){return PARTS[i];}
+function scored(P){return P.cards.filter(function(c){return c.ans!=null;});}
+var MAXPTS=0;
+(function(){var tmp=buildParts({dis:[0,1],exS:pick01(),exP:pick01(),ok:[0,1,2],bad:[0,1,2]});tmp.forEach(function(P){MAXPTS+=scored(P).length*10;});})();
+
+function versionCode(){var h=11;var arr=(S.plan.bp||[]).concat(S.plan.dis,S.plan.exS,S.plan.exP,S.plan.ok,S.plan.bad);arr.forEach(function(v,i){h=(h*31+v*7+i)%1679616;});S.plan.order.forEach(function(o){h=(h*17+o[0].charCodeAt(1))%1679616;});return ("000"+h.toString(36).toUpperCase()).slice(-4);}
+
+/* ---------- almacenamiento ---------- */
+var KEY="planos-v1",NAMES="planos-names";
+function load(){try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function bumpName(n){
+  var k=normText(n),map={};
+  try{map=JSON.parse(localStorage.getItem(NAMES)||"{}")||{};}catch(e){}
+  map[k]=(map[k]||0)+1;
+  try{localStorage.setItem(NAMES,JSON.stringify(map));}catch(e){}
+  return map[k];
+}
+function newCur(){return {place:{},locked:{},sel:null,att:0,done:false,shown:0,deadline:0,msg:"",mt:"",timeout:false};}
+
+var S=load(); if(S&&!S.plan) S=null;
+if(S) PARTS=buildParts(S.plan);
+var app=document.getElementById("app"),resetArmed=false,toastTimer=null,markerSeq=0;
+function totalPts(){return (S.res||[]).reduce(function(a,r){return a+(r?r.pts:0);},0);}
+
+/* ---------- conectores ---------- */
+function drawLinks(){
+  document.querySelectorAll("[data-links]").forEach(function(wrap){
+    var svg=wrap.querySelector("svg.links"); if(!svg) return;
+    if(getComputedStyle(svg).display==="none") return;
+    var R=wrap.getBoundingClientRect();
+    svg.setAttribute("viewBox","0 0 "+R.width+" "+R.height);
+    svg.setAttribute("width",R.width);svg.setAttribute("height",R.height);
+    function box(el){var r=el.getBoundingClientRect();return {x:r.left-R.left+r.width/2,y:r.top-R.top+r.height/2,hw:r.width/2,hh:r.height/2};}
+    function edge(a,b,gap){
+      var dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+      var s=Math.min(dx?a.hw/Math.abs(dx):Infinity,dy?a.hh/Math.abs(dy):Infinity);
+      return {x:a.x+dx*s+dx/len*gap,y:a.y+dy*s+dy/len*gap};
+    }
+    var mid="ah"+(++markerSeq),out="";
+    if(wrap.dataset.links==="mind"){
+      var c=box(wrap.querySelector(".center"));
+      wrap.querySelectorAll(".node").forEach(function(n){
+        var b=box(n),p1=edge(c,b,2),p2=edge(b,c,2),col=COL[+n.dataset.c].bg;
+        out+='<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" style="stroke:'+col+';stroke-width:3.5;stroke-linecap:round"/>'+
+             '<circle cx="'+p2.x+'" cy="'+p2.y+'" r="5" style="fill:'+col+'"/>';
+      });
+      svg.innerHTML=out;
+    } else {
+      var nodes=Array.prototype.slice.call(wrap.querySelectorAll(".cslot"));
+      nodes.forEach(function(n,i){
+        var a=box(n),b=box(nodes[(i+1)%nodes.length]),p1=edge(a,b,6),p2=edge(b,a,10);
+        out+='<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" style="stroke:var(--muted);stroke-width:2.5" marker-end="url(#'+mid+')"/>';
+      });
+      svg.innerHTML='<defs><marker id="'+mid+'" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>'+out;
+    }
+  });
+}
+window.addEventListener("resize",function(){clearTimeout(window._rz);window._rz=setTimeout(drawLinks,120);});
+
+/* ---------- render de esquemas ---------- */
+var MIND_POS=["1/1","1/3","2/1","2/3","3/1","3/3"];
+var CYC_POS=["1/1","1/2","1/3","3/3","3/2","3/1"];
+
+function cardsIn(P,st,binId,order){
+  return order.filter(function(id){return st.place[id]===binId;}).map(function(id){return P.cards.filter(function(c){return c.id===id;})[0];});
+}
+function chip(P,st,card,review){
+  var cl="chip"+(card.name?" name":"");
+  var locked=st.locked[card.id]!=null;
+  if(locked) cl+=" lock";
+  else if(st.done&&card.ans!=null) cl+=" fix";
+  if(!review&&st.sel===card.id) cl+=" sel";
+  if(review||locked||st.done) return '<span class="'+cl+'">'+esc(card.text)+'</span>';
+  return '<button class="'+cl+'" data-act="card" data-id="'+card.id+'">'+esc(card.text)+'</button>';
+}
+function dropZone(P,st,bin,order,review,ph){
+  var inner=cardsIn(P,st,bin.id,order).map(function(c){return chip(P,st,c,review);}).join("");
+  if(!inner) inner='<span class="ph">'+(review?"":(ph||"Toca aquí para colocar"))+'</span>';
+  var attrs=review||st.done?"":' role="button" tabindex="0" data-act="bin" data-bin="'+bin.id+'"';
+  return '<div class="drop"'+attrs+'>'+inner+'</div>';
+}
+function head(bin,inner){var c=COL[bin.c];return '<div class="nhead" style="background:'+c.bg+';color:'+c.ink+'">'+inner+'</div>';}
+
+function renderLayout(P,st,order,review){
+  var armed=!review&&st.sel?" armed":"", cls=(review?" review":"")+armed, h="";
+  if(P.layout==="mind"){
+    h='<div class="mind'+cls+'" data-links="mind"><svg class="links" aria-hidden="true"></svg><div class="center">Propiedades del software</div>';
+    P.bins.forEach(function(b,i){
+      h+='<div class="node" data-c="'+b.c+'" style="grid-area:'+MIND_POS[i]+'">'+head(b,'<span class="ic" aria-hidden="true">'+b.icon+'</span>'+dropZone(P,st,b,order,review,"¿Qué propiedad es?"))+'<p>'+esc(b.def)+'</p></div>';
+    });
+    return h+'</div>';
+  }
+  if(P.layout==="cycle"||P.layout==="cycledesc"){
+    h='<div class="cyc'+cls+'" data-links="cycle"><svg class="links" aria-hidden="true"></svg>';
+    P.bins.forEach(function(b,i){
+      var top=P.layout==="cycle"?'<span class="num">'+b.label+'</span>'+dropZone(P,st,b,order,review,"Etapa "+b.label):'<span class="num">'+b.num+'</span><span class="ic" aria-hidden="true">'+b.icon+'</span><span class="lbl">'+esc(b.label)+'</span>';
+      var nb=P.layout==="cycle"?{c:i}:b;
+      h+='<div class="cslot" data-n="'+i+'" style="grid-area:'+CYC_POS[i]+'">'+head(nb,top)+(P.layout==="cycledesc"?'<div class="body">'+dropZone(P,st,b,order,review,"¿Cuál es su propósito?")+'</div>':'')+'</div>';
+    });
+    return h+'<div class="center">Ciclo de vida del software</div></div>';
+  }
+  h='<div class="bins'+cls+'">';
+  P.bins.forEach(function(b){
+    var hd=head(b,'<span class="ic" aria-hidden="true">'+b.icon+'</span><span class="lbl">'+esc(b.label)+'</span>');
+    if(!review&&!st.done) hd=hd.replace('<div class="nhead"','<div class="nhead" role="button" tabindex="0" data-act="bin" data-bin="'+b.id+'"');
+    h+='<div class="bin">'+hd+dropZone(P,st,b,order,review,"Toca aquí para colocar")+'</div>';
+  });
+  return h+'</div>';
+}
+
+/* ---------- pantallas ---------- */
+function render(){
+  if(!S||!S.start) return renderIntro();
+  if(S.idx>=NP) return renderResults();
+  renderGame();
+}
+
+function heroSVG(){
+  var s='<svg class="hero-svg" viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="112" style="fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:6 8"/>';
+  STAGES.forEach(function(st,i){
+    var a=-Math.PI/2+i*Math.PI/3,x=160+112*Math.cos(a),y=160+112*Math.sin(a);
+    s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="30" style="fill:'+COL[i].bg+'"/><text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" style="font-size:24px">'+st.icon+'</text>';
+  });
+  s+='<g class="orb"><circle cx="160" cy="48" r="8" style="fill:var(--ink)"/></g>';
+  s+='<text x="160" y="152" text-anchor="middle" style="fill:var(--ink);font:800 20px \'Bricolage Grotesque\',sans-serif">Ciclo de</text><text x="160" y="178" text-anchor="middle" style="fill:var(--ink);font:800 20px \'Bricolage Grotesque\',sans-serif">vida</text></svg>';
+  return s;
+}
+
+function renderIntro(){
+  app.innerHTML='<main class="intro"><div>'+
+   '<h1>Planos del software</h1>'+
+   '<p class="lead">Arma dos esquemas: las propiedades del software y su ciclo de vida. Después aplícalos a un caso real: un gestor de archivos escolar y sus operaciones.</p>'+
+   '<ul class="rules">'+
+    '<li>Son 6 partes. Cada una tiene tiempo límite.</li>'+
+    '<li>Tienes dos revisiones por parte. Lo correcto de la primera vale 10 puntos y se queda fijo; lo que corrijas en la segunda vale 5.</li>'+
+    '<li>Cada alumno recibe una versión distinta.</li>'+
+    '<li>No salgas de esta pestaña: quedará registrado en tu informe.</li>'+
+    '<li>Al final verás tus esquemas completos. Toma captura de tu informe.</li>'+
+   '</ul>'+
+   '<div class="form">'+
+    '<label>Nombre completo<input id="fname" autocomplete="name" maxlength="60" placeholder="Nombre y apellidos"></label>'+
+    '<label>Grupo<input id="fgroup" maxlength="20" placeholder="Por ejemplo: 10°B"></label>'+
+    '<p class="err" id="ferr"></p>'+
+    '<div><button class="btn" data-act="start">Empezar</button></div>'+
+   '</div></div>'+heroSVG()+'</main>';
+  document.getElementById("fname").focus();
+  app.querySelectorAll("input").forEach(function(i){i.addEventListener("keydown",function(e){if(e.key==="Enter")start();});});
+}
+
+function start(){
+  var name=document.getElementById("fname").value.trim().replace(/\s+/g," ");
+  var group=document.getElementById("fgroup").value.trim();
+  var err=document.getElementById("ferr");
+  if(name.split(" ").length<2||name.length<5){err.textContent="Escribe tu nombre y al menos un apellido.";return;}
+  if(!group){err.textContent="Escribe tu grupo.";return;}
+  var plan=buildPlan();
+  S={name:name,group:group,idx:0,res:[],start:Date.now(),end:0,blurs:0,attemptNo:bumpName(name),plan:plan,cur:newCur()};
+  PARTS=buildParts(plan);
+  save();render();window.scrollTo(0,0);
+}
+
+function renderGame(){
+  var P=part(S.idx),c=S.cur,order=S.plan.order[S.idx];
+  if(!c.shown){c.shown=Date.now();c.deadline=c.shown+P.limit*1000;save();}
+  var steps="";
+  for(var i=0;i<NP;i++) steps+='<span class="'+(i<S.idx?"d":i===S.idx?"c":"")+'"></span>';
+
+  var bank=order.filter(function(id){return !c.place[id];}).map(function(id){return P.cards.filter(function(x){return x.id===id;})[0];});
+  var bankHTML=bank.length?bank.map(function(card){return chip(P,c,card,false);}).join(""):'<p class="empty">'+(c.done?"Parte terminada.":"Todas las tarjetas están colocadas. Revisa tu esquema y presiona Revisar.")+'</p>';
+  var actions=c.done
+    ? '<button class="btn" data-act="next">'+(S.idx===NP-1?"Ver mi informe":"Siguiente parte")+'</button>'
+    : '<button class="btn" data-act="check">Revisar</button><p>Revisiones restantes: '+(2-c.att)+'</p>';
+
+  app.innerHTML=
+  '<header class="bar"><div class="bar-in">'+
+   '<div class="who"><b>'+esc(S.name)+'</b><span>Grupo '+esc(S.group)+'. Parte '+(S.idx+1)+' de '+NP+'</span></div>'+
+   '<div class="hstat"><b>'+totalPts()+'</b><span>puntos</span></div>'+
+   '<div class="hstat" id="cdw"><b id="cd">'+(c.done?"--:--":fmtTime(c.deadline-Date.now()))+'</b><span>tiempo de la parte</span></div>'+
+  '</div><div class="steps" aria-hidden="true">'+steps+'</div></header>'+
+  '<main class="wrap">'+
+   '<div class="phead"><p class="kick">'+esc(P.kick)+'</p><h2>'+esc(P.title)+'</h2><p>'+esc(P.instr)+'</p></div>'+
+   (P.caseBox?'<div class="case"><b>Caso Carpeta Viva.</b> El equipo de tecnología de la escuela crea un gestor de archivos para realizar operaciones con archivos: crear, copiar, mover, renombrar, comprimir, buscar y eliminar.</div>':'')+
+   (c.msg?'<div class="fb '+c.mt+'">'+esc(c.msg)+'</div>':'')+
+   renderLayout(P,c,order,false)+
+  '</main>'+
+  '<section class="bank" aria-label="Banco de tarjetas"><div class="bank-in">'+
+   '<h3>Banco de tarjetas <span>'+(c.sel?"Ahora toca el lugar donde va":"Toca una tarjeta para elegirla")+'</span></h3>'+
+   '<div class="cards">'+bankHTML+'</div>'+
+   '<div class="bactions">'+actions+'</div>'+
+  '</div></section>';
+  requestAnimationFrame(drawLinks);
+  if(c.done){var nb=app.querySelector('[data-act="next"]');if(nb)nb.focus({preventScroll:true});}
+}
+
+function check(auto){
+  var P=part(S.idx),c=S.cur,sc=scored(P);
+  if(c.done) return;
+  if(!auto){
+    if(c.deadline&&Date.now()>c.deadline) return check(true);
+    var complete=P.cap===1?P.bins.every(function(b){return P.cards.some(function(x){return c.place[x.id]===b.id;});}):P.cards.every(function(x){return c.place[x.id];});
+    if(!complete){c.msg=P.cap===1?"Llena todos los recuadros antes de revisar.":"Coloca todas las tarjetas antes de revisar.";c.mt="info";c.sel=null;return renderGame();}
+  }
+  c.att++;
+  sc.forEach(function(card){
+    if(c.locked[card.id]!=null) return;
+    if(c.place[card.id]===card.ans) c.locked[card.id]=c.att===1?10:5;
+  });
+  var good=sc.filter(function(x){return c.locked[x.id]!=null;}).length;
+  if(good===sc.length||c.att>=2||auto){
+    c.done=true;c.sel=null;
+    P.cards.forEach(function(card){ if(card.ans==null) delete c.place[card.id]; else if(c.locked[card.id]==null) c.place[card.id]=card.ans; });
+    var pts=sc.reduce(function(a,x){return a+(c.locked[x.id]||0);},0);
+    c.msg=(auto&&c.timeout?"Se acabó el tiempo. ":"")+"Resultado: "+good+" de "+sc.length+" correctas, +"+pts+" puntos."+(good<sc.length?" Las marcadas con ✕ ya están en su lugar correcto: estúdialas.":" ¡Esquema perfecto!");
+    c.mt=good===sc.length?"ok":good>=sc.length/2?"info":"bad";
+    S.res[S.idx]={pts:pts,max:sc.length*10,ms:Math.min(Date.now(),c.deadline)-c.shown,to:!!c.timeout,place:c.place,locked:c.locked};
+  } else {
+    Object.keys(c.place).forEach(function(id){if(c.locked[id]==null)delete c.place[id];});
+    c.sel=null;
+    c.msg="Tienes "+good+" de "+sc.length+" correctas; ya quedaron fijas. Las demás regresaron al banco. Último intento: cada una vale 5 puntos.";
+    c.mt="bad";
+  }
+  save();renderGame();
+}
+
+function tick(){
+  if(!S||!S.start||S.idx>=NP) return;
+  var c=S.cur; if(c.done||!c.deadline) return;
+  var left=c.deadline-Date.now();
+  if(left<=0){c.timeout=true;check(true);return;}
+  var el=document.getElementById("cd"),w=document.getElementById("cdw");
+  if(el) el.textContent=fmtTime(left);
+  if(w) w.classList.toggle("low",left<30000);
+}
+
+function renderResults(){
+  if(!S.end){S.end=Date.now();save();}
+  var pts=totalPts(),grade=Math.round(pts/MAXPTS*100)/10;
+  var timeouts=S.res.filter(function(r){return r&&r.to;}).length;
+  var verdict=grade>=9?"Excelente trabajo":grade>=8?"Muy bien":grade>=6?"Aprobado":"Necesitas repasar";
+  var d=new Date(S.end);
+  var date=d.toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"})+", "+d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+  var lv="";
+  PARTS.forEach(function(P,i){
+    var r=S.res[i]||{pts:0,max:1,ms:0};
+    lv+='<div class="lvrow"><span>'+esc(P.kick+": "+P.title.toLowerCase())+'</span><span class="lm"><i style="width:'+Math.round(r.pts/r.max*100)+'%"></i></span><b>'+r.pts+'/'+r.max+'</b></div>';
+  });
+  function rv(i){var r=S.res[i];return renderLayout(PARTS[i],{place:r.place,locked:r.locked,done:true,sel:null},S.plan.order[i],true);}
+  app.innerHTML='<main class="res">'+
+   '<section class="card">'+
+    '<p class="kick">Informe: propiedades y ciclo de vida del software</p>'+
+    '<h1>'+esc(S.name)+'</h1><p class="grp">Grupo '+esc(S.group)+'. Caso: operaciones con archivos.</p>'+
+    '<div class="gradebox"><span class="grade">'+grade.toFixed(1)+'<small> / 10</small></span><span class="verdict">'+verdict+'</span></div>'+
+    '<dl class="facts">'+
+     '<div><dt>Puntos</dt><dd>'+pts+' de '+MAXPTS+'</dd></div>'+
+     '<div><dt>Tiempo total</dt><dd>'+fmtLong(S.end-S.start)+'</dd></div>'+
+     '<div><dt>Partes sin terminar a tiempo</dt><dd>'+timeouts+'</dd></div>'+
+     '<div'+(S.blurs?' class="warn"':'')+'><dt>Salidas de la pestaña</dt><dd>'+S.blurs+'</dd></div>'+
+     '<div><dt>Intento en este equipo</dt><dd>'+S.attemptNo+'</dd></div>'+
+     '<div><dt>Versión</dt><dd>'+versionCode()+'</dd></div>'+
+     '<div><dt>Terminado</dt><dd>'+esc(date)+'</dd></div>'+
+    '</dl>'+
+    '<div class="lv">'+lv+'</div>'+
+    '<p class="shot">Toma una captura de pantalla de este informe y entrégala a tu maestro. Abajo están tus esquemas completos: úsalos para estudiar.</p>'+
+   '</section>'+
+   '<section class="sec"><h2>Esquema 1: propiedades del software</h2><p>✓ = lo acertaste. ✕ = ya está corregido en su lugar.</p>'+rv(0)+'</section>'+
+   '<section class="sec"><h2>Esquema 2: ciclo de vida del software</h2><p>Las flechas muestran el orden; al terminar el mantenimiento, el ciclo vuelve a empezar con nuevos requisitos.</p>'+rv(2)+'</section>'+
+   '<section class="sec"><h2>Ejemplo aplicado: Carpeta Viva, operaciones con archivos</h2><p>Cómo se ve cada etapa del ciclo de vida en este proyecto:</p>'+rv(3)+'<p>Cómo se nota cada propiedad en el programa terminado:</p>'+rv(4)+'</section>'+
+   '<section class="sec"><h2>Fuentes consultadas</h2><p>Referencias en formato APA usadas para construir esta actividad.</p><ol class="refs">'+REFS.map(function(r){return '<li>'+r+'</li>';}).join("")+'</ol></section>'+
+   '<div class="after"><button class="btn ghost" data-act="reset">'+(resetArmed?"Confirmar: borrar y empezar con otro alumno":"Nuevo alumno")+'</button></div>'+
+  '</main>';
+  requestAnimationFrame(drawLinks);
+}
+
+/* ---------- eventos ---------- */
+function act(b){
+  var a=b.dataset.act,c=S&&S.cur;
+  if(a==="start") return start();
+  if(a==="reset"){
+    if(!resetArmed){resetArmed=true;return renderResults();}
+    resetArmed=false;S=null;PARTS=null;try{localStorage.removeItem(KEY);}catch(e){}render();window.scrollTo(0,0);return;
+  }
+  if(!c||c.done){ if(a==="next"){S.idx++;S.cur=newCur();if(S.idx>=NP)S.end=Date.now();save();render();window.scrollTo(0,0);} return; }
+  var P=part(S.idx);
+  if(a==="card"){
+    var id=b.dataset.id; if(c.locked[id]!=null) return;
+    if(c.place[id]){delete c.place[id];c.sel=id;}
+    else c.sel=c.sel===id?null:id;
+    c.msg="";save();return renderGame();
+  }
+  if(a==="bin"){
+    var bin=b.dataset.bin;
+    if(!c.sel){c.msg="Primero toca una tarjeta del banco.";c.mt="info";return renderGame();}
+    if(P.cap===1){
+      var occ=P.cards.filter(function(x){return c.place[x.id]===bin;})[0];
+      if(occ&&c.locked[occ.id]!=null){c.msg="Ese recuadro ya está resuelto correctamente.";c.mt="info";return renderGame();}
+      if(occ) delete c.place[occ.id];
+    }
+    c.place[c.sel]=bin;c.sel=null;c.msg="";save();return renderGame();
+  }
+  if(a==="check") return check(false);
+}
+app.addEventListener("click",function(e){var b=e.target.closest("[data-act]");if(!b||b.disabled)return;act(b);});
+app.addEventListener("keydown",function(e){
+  if(e.key!=="Enter"&&e.key!==" ") return;
+  var b=e.target.closest('[role="button"][data-act]');if(!b)return;
+  e.preventDefault();act(b);
+});
+
+function toast(msg){
+  var old=document.querySelector(".toast");if(old)old.remove();
+  var t=document.createElement("div");t.className="toast";t.setAttribute("role","alert");t.textContent=msg;
+  document.body.appendChild(t);clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.remove();},4000);
+}
+document.addEventListener("visibilitychange",function(){
+  if(!S||!S.start||S.idx>=NP) return;
+  if(document.hidden){S.blurs=(S.blurs||0)+1;save();}
+  else{toast("Saliste de la actividad ("+S.blurs+" "+(S.blurs===1?"vez":"veces")+"). Aparecerá en tu informe.");tick();}
+});
+setInterval(tick,1000);
+
+render();
+})();
+</script>
+</body>
+</html>
